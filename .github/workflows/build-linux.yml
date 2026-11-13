@@ -41,7 +41,7 @@ jobs:
       - name: Tests
         run: |
           cargo build -p craft-anything-cli
-          cargo test -p craft-anything-ai -p craft-anything-setup -p craft-anything-cli
+          PATH="$PWD/target/debug:$PATH" cargo test -p craft-anything-ai -p craft-anything-setup -p craft-anything-cli
 
       - name: Build release binaries
         run: cargo build --release -p craft-anything-cli -p craft-anything
