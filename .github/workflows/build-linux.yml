@@ -1,0 +1,58 @@
+name: Build Linux x86_64 (tmp/ci-omp-verify)
+
+on:
+  push:
+    branches: [tmp/ci-omp-verify]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev \
+            libxi-dev libgl1-mesa-dev libgtk-3-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format check
+        run: cargo fmt --all --check
+
+      - name: Xtask layers & secrets
+        run: |
+          cargo xtask layers
+          cargo xtask secrets
+
+      - name: Clippy
+        run: cargo clippy -p craft-anything-ai -p craft-anything-setup -p craft-anything-cli -p craft-anything --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo test -p craft-anything-ai -p craft-anything-setup -p craft-anything-cli
+
+      - name: Build release binaries
+        run: cargo build --release -p craft-anything-cli -p craft-anything
+
+      - name: Package binaries
+        run: |
+          mkdir -p dist
+          cp target/release/craft-anything dist/
+          cp target/release/craft-anything-cli dist/
+          strip dist/craft-anything dist/craft-anything-cli
+          tar -czf craft-anything-omp-linux-x86_64.tar.gz -C dist craft-anything craft-anything-cli
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: craft-anything-omp-linux-x86_64
+          path: craft-anything-omp-linux-x86_64.tar.gz
